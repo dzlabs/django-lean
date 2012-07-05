@@ -54,7 +54,11 @@ class GoalRecord(models.Model):
                                experiment_user=subject)
             return goal_record
         else:
-            l.error("Attempt to record a Goal on a registered user - support for this needs to be added.")
+            if not subject.is_anonymous():
+                l.error("Attempt to record a Goal on a registered user - support for this needs to be added.")
+            else:
+                pass
+                # This subject is not yet a participant in anything, so skip recording. 
 
     @classmethod
     def record(cls, goal_name, subject):
