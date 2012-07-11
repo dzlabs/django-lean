@@ -140,9 +140,12 @@ class Subject(object):
             except:
                 continue
             try:
-                Participant.objects.create(anonymous_visitor=anonymous_visitor,
-                                           experiment=experiment,
-                                           group=group_id)
+                p, created = Participant.objects.get_or_ccreate(
+                    anonymous_visitor=anonymous_visitor,
+                    experiment=experiment,
+                    defaults={'group': group_id})
+                if not created:
+                    l.warning("confirm_human: migrating participation, Participant already existed for experiment %s", experiment.id)
             except:
                 pass
             del self.session['temporary_enrollments'][experiment_name]

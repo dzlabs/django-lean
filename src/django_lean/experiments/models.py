@@ -105,14 +105,21 @@ class Experiment(models.Model):
                 return participants[0].group
 
         def set_enrollment(self, experiment, group_id):
-            participant = Participant.objects.create(
+            participant, created = Participant.objects.get_or_create(
                 user=self.subject.get_registered_user(),
-                experiment=experiment, group=group_id
+                experiment=experiment,
+                defaults={'group':group_id}
             )
-            user_enrolled.send(sender=self.__class__,
-                               experiment=experiment,
-                               experiment_user=self.subject,
-                               group_id=group_id)
+            if created:
+                user_enrolled.send(sender=self.__class__,
+                                   experiment=experiment,
+                                   experiment_user=self.subject,
+                                   group_id=group_id)
+            else:
+                l.warning("RegisteredParticipant %s tried to double-enroll in %s, keeping in %s", 
+                            self.subject.get_registered_user().pk,
+                            experiment.pk,
+                            participant.group_id)
 
     class AnonymousParticipant(object):
         def __init__(self, subject):
@@ -142,14 +149,21 @@ class Experiment(models.Model):
                 anonymous_visitor.save()
                 self.subject.set_anonymous_id(anonymous_visitor.id)
 
-            Participant.objects.create(
+            participant, created = Participant.objects.get_or_create(
                 anonymous_visitor=anonymous_visitor,
-                experiment=experiment, group=group_id
+                experiment=experiment,
+                defaults={'group': group_id}
             )
-            user_enrolled.send(sender=self.__class__,
-                               experiment=experiment,
-                               experiment_user=self.subject,
-                               group_id=group_id)
+            if created:
+                user_enrolled.send(sender=self.__class__,
+                                   experiment=experiment,
+                                   experiment_user=self.subject,
+                                   group_id=group_id)
+            else:
+                l.warning("AnonymousParticipant %s tried to double-enroll in %s, keeping in %s", 
+                            anonymous_visitor.id,
+                            experiment.pk,
+                            participant.group_id)                
 
     @classmethod
     def get_participant_adaptor(cls, subject):
